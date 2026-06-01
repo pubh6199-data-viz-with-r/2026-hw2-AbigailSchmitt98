@@ -62,6 +62,10 @@ You will use the NOAA Billion-Dollar Disaster dataset to explore how visual enco
 ```{r}
 library(tidyverse)
 library(janitor)
+#install.packages("gghighlight") #install and load gghighlight 
+library(gghighlight)
+#install.packages("scales") #install and load scales for scaling logic in visualization 
+library(scales)
 # load other packages as you see fit but remember to add comments to explain what each package does
 ```
 
@@ -78,7 +82,7 @@ Following these steps to download and read in the dataset:
 
 4. Read in the CSV file using `read_csv()`
 
-```{r, eval=FALSE}
+```{r}
 # remove the eval=FALSE when you render quarto document
 df_disasters <- read_csv("data/events-US-1980-2024-Q4.csv", skip = 2) |>
   janitor::clean_names()
@@ -95,10 +99,11 @@ df_disasters <- read_csv("data/events-US-1980-2024-Q4.csv", skip = 2) |>
 
 6. Create a new column `year` that extracts the year from the `begin_date` column. You can use the `lubridate` package to do this.
 
-```{r, eval=FALSE}
+```{r}
 # remove the eval=FALSE when you render quarto document
 df_disasters <- df_disasters |>
   mutate(year = lubridate::year(ymd(begin_date)))
+View(df_disasters) # view updated csv file with new column
 ```
 
 7. Explore the dataset and answer these questions:
@@ -109,12 +114,21 @@ df_disasters <- df_disasters |>
 
 ```{r}
 #your code here
+df_disasters %>%
+  count(disaster) %>%
+  arrange(desc(n)) #find the top 5 most common disaster types and puts them in descending order
+```
+``` {r}
+df_disasters %>% #group data by year, calculate cpi adjusted cost, and arrange in descending order
+  group_by(year) %>%
+  count(cpi_adjusted_cost) %>%
+  arrange(desc(cpi_adjusted_cost))
 ```
 
 ::: {.callout-note title="Your Answer"}
-- Missing data:
-- 5 most disaster types:
-- 3 most expensive years by CPI-adjusted cost:
+- Missing data: There are zero values in the death column. This may lead to gaps in visualizations of individual events. 
+- 5 most disaster types: Severe Storm, Tropical Cyclone, Flooding, Drought, and Winter Storm
+- 3 most expensive years by CPI-adjusted cost: 2005, 2017, and 2022
 :::
 
 
@@ -139,12 +153,26 @@ Your final visualization should:
 
 ```{r}
 #your code here
+df_disasters %>%
+  count(year, disaster) %>% #count the number of disasters and include the year
+  ggplot(aes(x = year, y = n, group = disaster, color = disaster)) + 
+  geom_line() + #create line chart by frequency and type of disaster 
+  scale_x_continuous(breaks = breaks_pretty()) + # make an x-axis with only integers 
+  gghighlight::gghighlight(disaster %in% c("Severe Storm", "Tropical Cyclone")) + #highlight these natural disasters 
+  scale_color_manual(values = c("Severe Storm" = "Red", "Tropical Cyclone" = "Dark Green")) + #change gghighlight color
+  theme_classic()+ #change theme 
+  labs( y = "Counts", x = "Year", title = "Frequency of Billion-Dollar Severe Storms and Tropical Cyclones from 1980 - 2024",
+       subtitle = "The frequency in these storms has increased since 1980",
+       caption = "Data: NOAA Billion-Dollar Disasters (accessed 2026)") #add appropriate title, caption, subtitle, and change axis labels 
+  
+  
 ```
 
 What do you notice about the trends over time in the frequency and/or cost of disasters? Anything unexpected?
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+The frequency in billion-dollar severe storms has increased more than any other natural disaster. I expected all disasters to increase over time given that climate change has increased the intensity of natural disasters. Although this may be true, the data set has only recorded the number of billion-dollar disasters and the nature of a given disaster, for example a drought, might be more difficult to measure in damage costs. Droughts are a disaster that is measured over a longer period of time than compared to a more acute event like a severe storm.
 :::
 
 ## Q3: Reflection
@@ -153,6 +181,7 @@ a. What are your variables of interest and what kinds of data (e.g., numeric, ca
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+My variables of interest are year, frequency, and disaster. Year and the created frequency (n) variable from the count(disaster) function are both numeric and disaster is categorical.   
 :::
 
 b. How did you decide which type of graphic form was best suited for answering the question?
@@ -160,18 +189,21 @@ What alternative graphic forms could you have used instead? Why did you settle o
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+A line graph was appropriate because it is easy to see the trend in disasters over time. Highlighting disasters with the most dramatic change in frequency made the graph more readable since the other disasters with less obvious trends faded into the background.Also, highlighting all of the disasters would have made the graph too messy to interpret. Alternative forms that could have worked are histograms or a violin dot plot. I thought a line chart was going to be the simplest graph to read and have a high data to ink ratio compared to the other graphs mentioned.
 :::
 
 c. What modifications did you make to this viz to improve readability and accessibility?
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+I changed the theme to classic so the background was white instead of gray. I highlighted certain disasters instead of letting all of the disasters be highlighted to improve the readability of the graph. The colors of the highlighted disasters are distinct to improve accessibility. The Y axis was renamed from "n" to "Counts" to make the labels more obvious and unambiguous to an end-user. I also changed the scale in the x-axis to only include integers. 
 :::
 
 d. Is there anything you wanted to implement but didn’t know how? If so, describe it.
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+I wanted to facet wrap the graph to make small multiples by decade. I was able to make a new column for the decade label but I was not sure how to make the x-axis specific for the small multiple. When I ran the code each graph had 1980-2024 in the x-axis and made the graphs harder to read.  
 :::
 
 ## Q4: Critique the original graph from NOAA
@@ -188,6 +220,9 @@ a. Describe the graphic
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+- The types of charts used are line graph, stacked bar graph, and a filled in and stacked line graph for the cost 95% CI. 
+- The billion-dollar disaster costs are encoded by color and disaster type is visualized though size and color.
+- The intended takeaways of this graph are that the frequency and overall cost of billion-dollar disasters is increasing over time. 
 :::
 
 b. Assess strengths
@@ -197,6 +232,7 @@ b. Assess strengths
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+This graph is effective in communicating how the trend in the total natural disasters has increased since 1980. I think the purpose of this graph was to observe natural disaster trends from a wider point of view by having data over a long period of time. This can be shown in the overall length of the bar chart as you move through time as well as the upward trend in the line graph. The colors used in the bar chart are ordered in a way where colors that are next to each other are distinct and the x-axis is labelled every other year to improve the readability by making the axis less crowded. The alternating white and grey background makes it easier to guide your eyes to the bar charts than having a solid colored background. 
 :::
 
 c. Assess limitations
@@ -207,6 +243,7 @@ c. Assess limitations
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+The line graph for the total costs are very difficult to read against the changing colors of the bar chart. Using gray for the 95% CI is very difficult to read against the green and blue sections of the graph. The stacked bar chart can lead to misinterpretations of the counts of certain disasters since you are not counting from zero to determine the number of disasters. Overall, having two x-axes makes the visualization more confusing and cluttered than having two charts with less variables. 
 :::
 
 d. Recommend improvements
@@ -216,6 +253,9 @@ d. Recommend improvements
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+1. Creating two different charts, one for the stacked bars and one for the line chart. 
+2. Creating a user interactive guide where they can select the time period and/or individual or a select group of disasters. 
+3. Changing the color of the 95% CI area to a darker gray to improve readability. 
 :::
 
 
@@ -226,10 +266,19 @@ Type your response here.
 
 ```{r} 
 #your code here
+df_disasters %>%
+  count(year, disaster) %>% #count the number of disasters and include the year
+  ggplot(aes(x = year, y = n, group = disaster, fill = disaster))+
+  geom_area()+ #create stacked area graph 
+  theme_classic() +
+  labs( y = "Counts", x = "Year", title = "Frequency of Billion-Dollar Severe Storms and Tropical Cyclones from 1980 - 2024",
+       subtitle = "The frequency in disasters has increased since 1980",
+       caption = "Data: NOAA Billion-Dollar Disasters (accessed 2026)") #add appropriate title, caption, subtitle, and change axis labels 
 ```
 
 ::: {.callout-note title="Your Reflection"}
 Type your reflection here.
+I thought the linked website was very informative on the most effective visualization for a given dataset. There were some visualizations on the website that I would like to learn how to create in the future (e.g heat map, snakey diagram, spider plot). In my graph above I thought it is effective in displaying the message that the overall number of billion-dollar disasters has greatly increased over time. I understand that the colors together are very bright and can strain your eyes. I tried to desaturate all of the colors but I could not figure out how to do that in an easy way. 
 :::
 
 ## How I used GenAI?
@@ -237,6 +286,10 @@ Describe how GenAI is used in producing this homework, include prompt, date, mod
 
 ::: {.callout-note title="Your Answer"}
 Type your response here.
+I used ChatGPT for general questions about ggplot and debugging. This chat includes multiple prompts I used while doing this homework. 
+accessed 5/31/2026
+version:GPT-5.5
+https://chatgpt.com/share/6a1df56f-c410-83ea-94b6-f25300aea7a4
 :::
 
 ## Save and Push Your Work
